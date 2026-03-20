@@ -1,0 +1,54 @@
+{
+  "model_name": "gpt2",
+  "analysis_type": "weight_matrix_analysis",
+  "key_layers": [
+    {
+      "name": "wte.weight",
+      "shape": "[50257, 768]",
+      "eff_rank": 768,
+      "full_rank": 768,
+      "cond": 3860.030517578125
+    },
+    {
+      "name": "h.0.attn.c_attn.weight",
+      "shape": "[768, 2304]",
+      "eff_rank": 768,
+      "full_rank": 768,
+      "cond": 45.53374481201172
+    },
+    {
+      "name": "h.5.attn.c_attn.weight",
+      "shape": "[768, 2304]",
+      "eff_rank": 768,
+      "full_rank": 768,
+      "cond": 32.67864990234375
+    },
+    {
+      "name": "h.11.attn.c_attn.weight",
+      "shape": "[768, 2304]",
+      "eff_rank": 768,
+      "full_rank": 768,
+      "cond": 21.370542526245117
+    },
+    {
+      "name": "h.0.mlp.c_fc.weight",
+      "shape": "[768, 3072]",
+      "eff_rank": 768,
+      "full_rank": 768,
+      "cond": 44.39105224609375
+    },
+    {
+      "name": "h.11.mlp.c_fc.weight",
+      "shape": "[768, 3072]",
+      "eff_rank": 768,
+      "full_rank": 768,
+      "cond": 82.53752899169922
+    }
+  ],
+  "patterns": {
+    "low_rank_count": 0,
+    "high_rank_count": 50,
+    "well_conditioned_count": 29,
+    "ill_conditioned_count": 11
+  }
+}
