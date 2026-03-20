@@ -5,21 +5,10 @@
 import torch
 import torch.nn as nn
 from typing import Dict, List, Optional, Callable, Any, Union
-from dataclasses import dataclass, field
-from transformers import AutoModel, AutoTokenizer, AutoModelForCausalLM, PreTrainedModel
+from transformers import AutoModel, AutoTokenizer, AutoModelForCausalLM
 import gc
 
-
-@dataclass
-class ModelConfig:
-    """模型配置"""
-    name_or_path: str = "gpt2"
-    device: str = "cuda" if torch.cuda.is_available() else "cpu"
-    dtype: torch.dtype = torch.float32
-    use_cache: bool = False
-    add_special_tokens: bool = True
-    max_length: int = 512
-    output_attentions: bool = True
+from .config import ModelConfig
 
 
 class ModelWrapper:
