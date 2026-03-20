@@ -1,0 +1,121 @@
+{
+  "model_name": "gpt2",
+  "analysis_type": "dynamic_activation_similarity",
+  "num_layers": 12,
+  "num_sentences": 5,
+  "statistics": {
+    "mean_similarity": 0.004787110848679511,
+    "std_similarity": 0.0034203451053232328,
+    "max_similarity": 0.012537184171378613,
+    "min_similarity": 3.0732240702491254e-05
+  },
+  "top_similar": [
+    {
+      "layer1": "h.8.attn.c_attn",
+      "layer2": "h.9.attn.c_attn",
+      "representation_similarity": 0.012537184171378613
+    },
+    {
+      "layer1": "h.2.attn.c_attn",
+      "layer2": "h.3.attn.c_attn",
+      "representation_similarity": -0.012182775884866714
+    },
+    {
+      "layer1": "h.3.attn.c_attn",
+      "layer2": "h.9.attn.c_attn",
+      "representation_similarity": 0.012076868675649166
+    },
+    {
+      "layer1": "h.10.attn.c_attn",
+      "layer2": "h.7.attn.c_attn",
+      "representation_similarity": -0.011687716469168663
+    },
+    {
+      "layer1": "h.4.attn.c_attn",
+      "layer2": "h.7.attn.c_attn",
+      "representation_similarity": -0.010840276256203651
+    },
+    {
+      "layer1": "h.11.attn.c_attn",
+      "layer2": "h.6.attn.c_attn",
+      "representation_similarity": 0.010787067003548145
+    },
+    {
+      "layer1": "h.10.attn.c_attn",
+      "layer2": "h.9.attn.c_attn",
+      "representation_similarity": 0.009373391978442669
+    },
+    {
+      "layer1": "h.10.attn.c_attn",
+      "layer2": "h.4.attn.c_attn",
+      "representation_similarity": -0.009318599477410316
+    },
+    {
+      "layer1": "h.10.attn.c_attn",
+      "layer2": "h.3.attn.c_attn",
+      "representation_similarity": -0.009317790158092976
+    },
+    {
+      "layer1": "h.4.attn.c_attn",
+      "layer2": "h.8.attn.c_attn",
+      "representation_similarity": -0.008734759874641895
+    }
+  ],
+  "adjacent_similarities": [
+    {
+      "from": 0,
+      "to": 1,
+      "similarity": 0.0014120574342086911
+    },
+    {
+      "from": 1,
+      "to": 10,
+      "similarity": 0.0012667735572904348
+    },
+    {
+      "from": 10,
+      "to": 11,
+      "similarity": 0.0037781461142003536
+    },
+    {
+      "from": 11,
+      "to": 2,
+      "similarity": 0.004772505722939968
+    },
+    {
+      "from": 2,
+      "to": 3,
+      "similarity": 0.012182775884866714
+    },
+    {
+      "from": 3,
+      "to": 4,
+      "similarity": 0.0004778445290867239
+    },
+    {
+      "from": 4,
+      "to": 5,
+      "similarity": 0.008130633272230625
+    },
+    {
+      "from": 5,
+      "to": 6,
+      "similarity": 0.0024032979272305965
+    },
+    {
+      "from": 6,
+      "to": 7,
+      "similarity": 0.0078803189098835
+    },
+    {
+      "from": 7,
+      "to": 8,
+      "similarity": 0.00258086109533906
+    },
+    {
+      "from": 8,
+      "to": 9,
+      "similarity": 0.012537184171378613
+    }
+  ]
+}

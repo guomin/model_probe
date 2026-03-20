@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPT-2 模型分析报告 - Model Probe</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f7fa;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.8em;
+        }
+
+        .card h3 {
+            color: #555;
+            margin: 20px 0 10px;
+            font-size: 1.3em;
+        }
+
+        .key-findings {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .finding-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .finding-card .icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .finding-card h4 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-box .value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-box .label {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .nav-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .nav-card {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid #e0e0e0;
+        }
+
+        .nav-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            border-color: #667eea;
+        }
+
+        .nav-card .icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        .nav-card h3 {
+            margin: 0;
+            color: #333;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            transition: width 0.5s;
+        }
+
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 200px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px 0;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .explanation {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+
+        .explanation strong {
+            color: #856404;
+        }
+
+        footer {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+            margin-top: 50px;
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8em;
+            }
+
+            .key-findings {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>GPT-2 模型分析报告</h1>
+        <p class="subtitle">揭开模型黑盒，让AI白化与透明化</p>
+    </header>
+
+    <div class="container">
+        
+<!-- 关键发现部分 -->
+<div class="card">
+    <h2>⭐ 关键发现</h2>
+    <p style="margin-bottom: 20px; color: #666;">这是最重要的3个发现，建议优先了解：</p>
+
+    <div class="key-findings">
+        
+        <div class="finding-card">
+            <div class="icon">🎯</div>
+            <h4>第7层最关键</h4>
+            <p>该层在主要任务上达到94.0%的准确率</p>
+            
+            <div class="explanation" style="margin-top: 10px;">
+                <strong>💡 这意味着：</strong>知识在这一层已经高度抽象化，是理解模型的关键
+            </div>
+            
+        </div>
+        
+        <div class="finding-card">
+            <div class="icon">💡</div>
+            <h4>语义知识为主</h4>
+            <p>模型主要编码语义相关信息，占比45.0%</p>
+            
+            <div class="explanation" style="margin-top: 10px;">
+                <strong>💡 这意味着：</strong>这反映了模型的学习目标和训练数据的特点
+            </div>
+            
+        </div>
+        
+        <div class="finding-card">
+            <div class="icon">👁️</div>
+            <h4>发现5种注意力模式</h4>
+            <p>不同的注意力头专注于不同的语言现象</p>
+            
+            <div class="explanation" style="margin-top: 10px;">
+                <strong>💡 这意味着：</strong>这种分工合作使模型能够同时处理多种类型的信息
+            </div>
+            
+        </div>
+        
+    </div>
+</div>
+
+<!-- 快速统计 -->
+<div class="card">
+    <h2>📊 模型概览</h2>
+
+    <div class="stat-grid">
+        <div class="stat-box">
+            <div class="value">12</div>
+            <div class="label">层数</div>
+        </div>
+        <div class="stat-box">
+            <div class="value">124000000</div>
+            <div class="label">参数量</div>
+        </div>
+        <div class="stat-box">
+            <div class="value">768</div>
+            <div class="label">隐藏维度</div>
+        </div>
+        <div class="stat-box">
+            <div class="value">12</div>
+            <div class="label">注意力头数</div>
+        </div>
+    </div>
+</div>
+
+<!-- 层准确率概览 -->
+<div class="card">
+    <h2>🎯 各层能力分析</h2>
+    <p style="margin-bottom: 20px; color: #666;">每层对不同任务的准确率，颜色越深表示能力越强：</p>
+
+    
+    <div style="margin-bottom: 25px;">
+        <h3 style="margin-bottom: 10px;">语法分析</h3>
+        <div class="explanation" style="margin-bottom: 15px;">
+            <strong>什么是语法分析？</strong>判断词性、句法结构等语言形式特征
+        </div>
+
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第0层</span>
+                <span>65.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 65.0%;">
+                    65.0%
+                </div>
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第1层</span>
+                <span>72.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 72.0%;">
+                    72.0%
+                </div>
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第2层</span>
+                <span>78.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 78.0%;">
+                    78.0%
+                </div>
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第3层</span>
+                <span>82.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 82.0%;">
+                    82.0%
+                </div>
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第4层</span>
+                <span>85.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 85.0%;">
+                    85.0%
+                </div>
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第5层</span>
+                <span>87.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 87.0%;">
+                    87.0%
+                </div>
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第6层</span>
+                <span>88.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 88.0%;">
+                    88.0%
+                </div>
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第7层</span>
+                <span>89.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 89.0%;">
+                    89.0%
+                </div>
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第8层</span>
+                <span>90.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 90.0%;">
+                    90.0%
+                </div>
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第9层</span>
+                <span>90.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 90.0%;">
+                    90.0%
+                </div>
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第10层</span>
+                <span>91.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 91.0%;">
+                    91.0%
+                </div>
+            </div>
+            
+            <div style="font-size: 0.85em; color: #28a745; margin-top: 5px;">
+                ✓ 该层在此任务上表现优异
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第11层</span>
+                <span>91.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 91.0%;">
+                    91.0%
+                </div>
+            </div>
+            
+            <div style="font-size: 0.85em; color: #28a745; margin-top: 5px;">
+                ✓ 该层在此任务上表现优异
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div style="margin-bottom: 25px;">
+        <h3 style="margin-bottom: 10px;">语义理解</h3>
+        <div class="explanation" style="margin-bottom: 15px;">
+            <strong>什么是语义理解？</strong>理解词义、句义等语言内容
+        </div>
+
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第0层</span>
+                <span>45.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 45.0%;">
+                    45.0%
+                </div>
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第1层</span>
+                <span>52.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 52.0%;">
+                    52.0%
+                </div>
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第2层</span>
+                <span>58.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 57.99999999999999%;">
+                    58.0%
+                </div>
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第3层</span>
+                <span>64.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 64.0%;">
+                    64.0%
+                </div>
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第4层</span>
+                <span>70.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 70.0%;">
+                    70.0%
+                </div>
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第5层</span>
+                <span>75.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 75.0%;">
+                    75.0%
+                </div>
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第6层</span>
+                <span>80.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 80.0%;">
+                    80.0%
+                </div>
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第7层</span>
+                <span>84.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 84.0%;">
+                    84.0%
+                </div>
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第8层</span>
+                <span>87.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 87.0%;">
+                    87.0%
+                </div>
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第9层</span>
+                <span>89.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 89.0%;">
+                    89.0%
+                </div>
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第10层</span>
+                <span>91.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 91.0%;">
+                    91.0%
+                </div>
+            </div>
+            
+            <div style="font-size: 0.85em; color: #28a745; margin-top: 5px;">
+                ✓ 该层在此任务上表现优异
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第11层</span>
+                <span>92.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 92.0%;">
+                    92.0%
+                </div>
+            </div>
+            
+            <div style="font-size: 0.85em; color: #28a745; margin-top: 5px;">
+                ✓ 该层在此任务上表现优异
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div style="margin-bottom: 25px;">
+        <h3 style="margin-bottom: 10px;">逻辑推理</h3>
+        <div class="explanation" style="margin-bottom: 15px;">
+            <strong>什么是逻辑推理？</strong>进行因果推断、类比推理等高级认知
+        </div>
+
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第0层</span>
+                <span>35.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 35.0%;">
+                    35.0%
+                </div>
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第1层</span>
+                <span>40.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 40.0%;">
+                    40.0%
+                </div>
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第2层</span>
+                <span>45.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 45.0%;">
+                    45.0%
+                </div>
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第3层</span>
+                <span>50.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 50.0%;">
+                    50.0%
+                </div>
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第4层</span>
+                <span>56.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 56.00000000000001%;">
+                    56.0%
+                </div>
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第5层</span>
+                <span>62.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 62.0%;">
+                    62.0%
+                </div>
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第6层</span>
+                <span>68.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 68.0%;">
+                    68.0%
+                </div>
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第7层</span>
+                <span>74.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 74.0%;">
+                    74.0%
+                </div>
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第8层</span>
+                <span>80.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 80.0%;">
+                    80.0%
+                </div>
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第9层</span>
+                <span>85.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 85.0%;">
+                    85.0%
+                </div>
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第10层</span>
+                <span>88.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 88.0%;">
+                    88.0%
+                </div>
+            </div>
+            
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第11层</span>
+                <span>90.0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 90.0%;">
+                    90.0%
+                </div>
+            </div>
+            
+        </div>
+        
+    </div>
+    
+</div>
+
+<!-- 知识演化 -->
+<div class="card">
+    <h2>📈 知识如何逐层累积</h2>
+    <p style="margin-bottom: 20px; color: #666;">观察不同类型的知识在各层中是如何形成和累积的：</p>
+
+    <div id="knowledge-evolution-chart"></div>
+
+    <div class="explanation">
+        <strong>💡 观察要点：</strong>
+        <ul style="margin-left: 20px; margin-top: 10px;">
+            <li>早期层（1-4）：主要处理低级特征（词性、句法）</li>
+            <li>中期层（5-8）：开始组合抽象概念</li>
+            <li>后期层（9-12）：处理高级语义和推理</li>
+        </ul>
+    </div>
+</div>
+
+<!-- 导航到详细页面 -->
+<div class="card">
+    <h2>🔍 深入探索</h2>
+    <p style="margin-bottom: 20px; color: #666;">点击下方卡片查看更详细的分析：</p>
+
+    <div class="nav-cards">
+        <div class="nav-card" onclick="window.location.href='layers.html'">
+            <div class="icon">🧠</div>
+            <h3>层分析</h3>
+            <p>深入了解每一层的行为</p>
+        </div>
+
+        <div class="nav-card" onclick="window.location.href='attention.html'">
+            <div class="icon">👁️</div>
+            <h3>注意力机制</h3>
+            <p>查看模型在关注什么</p>
+        </div>
+
+        <div class="nav-card" onclick="window.location.href='knowledge.html'">
+            <div class="icon">📍</div>
+            <h3>知识定位</h3>
+            <p>找出知识存储位置</p>
+        </div>
+
+        <div class="nav-card" onclick="window.location.href='exploration.html'">
+            <div class="icon">🧪</div>
+            <h3>交互探索</h3>
+            <p>动态调整参数观察</p>
+        </div>
+    </div>
+</div>
+
+<!-- 常见问题 -->
+<div class="card">
+    <h2>❓ 常见问题</h2>
+
+    <div style="margin-top: 20px;">
+        
+        <details style="margin-bottom: 15px; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px;">
+            <summary style="cursor: pointer; font-weight: bold; color: #667eea;">
+                如何理解&#34;层&#34;的概念？
+            </summary>
+            <div style="margin-top: 10px; color: #555;">
+                可以把层想象成处理信息的&#34;步骤&#34;。信息从第1层输入，经过12层的逐步处理，每一层都会提取和组合更高级的特征。
+            </div>
+        </details>
+        
+        <details style="margin-bottom: 15px; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px;">
+            <summary style="cursor: pointer; font-weight: bold; color: #667eea;">
+                为什么有些层准确率高，有些低？
+            </summary>
+            <div style="margin-top: 10px; color: #555;">
+                不同层专门处理不同类型的信息。早期层处理简单特征（如词性），后期层处理复杂概念。如果在某项任务上所有层都不高，说明模型可能没有学会这个任务。
+            </div>
+        </details>
+        
+        <details style="margin-bottom: 15px; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px;">
+            <summary style="cursor: pointer; font-weight: bold; color: #667eea;">
+                注意力机制是什么？
+            </summary>
+            <div style="margin-top: 10px; color: #555;">
+                注意力机制让模型能够&#34;关注&#34;输入中的重要部分。就像阅读时，我们会重点关注某些关键词一样，模型通过注意力权重来决定哪些信息更重要。
+            </div>
+        </details>
+        
+        <details style="margin-bottom: 15px; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px;">
+            <summary style="cursor: pointer; font-weight: bold; color: #667eea;">
+                这些分析结果如何帮助改进模型？
+            </summary>
+            <div style="margin-top: 10px; color: #555;">
+                通过分析可以：1) 发现模型的弱点（哪层学得不好）；2) 理解模型如何做决策；3) 指导模型压缩和优化；4) 提高模型的可解释性和可信度。
+            </div>
+        </details>
+        
+    </div>
+</div>
+
+    </div>
+
+    <footer>
+        <p>Generated by Model Probe - 神经网络模型理解框架</p>
+        <p>Generated at: 2026-03-20 17:10:03</p>
+    </footer>
+
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    <script>
+        // 全局数据
+        window.reportData = {
+  "model": {
+    "name": "GPT-2 (Small)",
+    "num_layers": 12,
+    "num_params": 124000000,
+    "hidden_dim": 768,
+    "num_heads": 12,
+    "vocab_size": 50257
+  },
+  "findings": [
+    {
+      "icon": "🎯",
+      "title": "第7层最关键",
+      "description": "该层在主要任务上达到94.0%的准确率",
+      "detail": "知识在这一层已经高度抽象化，是理解模型的关键"
+    },
+    {
+      "icon": "💡",
+      "title": "语义知识为主",
+      "description": "模型主要编码语义相关信息，占比45.0%",
+      "detail": "这反映了模型的学习目标和训练数据的特点"
+    },
+    {
+      "icon": "👁️",
+      "title": "发现5种注意力模式",
+      "description": "不同的注意力头专注于不同的语言现象",
+      "detail": "这种分工合作使模型能够同时处理多种类型的信息"
+    }
+  ],
+  "layer_tasks": [
+    {
+      "name": "语法分析",
+      "explanation": "判断词性、句法结构等语言形式特征",
+      "layers": [
+        {
+          "index": 0,
+          "accuracy": 0.65
+        },
+        {
+          "index": 1,
+          "accuracy": 0.72
+        },
+        {
+          "index": 2,
+          "accuracy": 0.78
+        },
+        {
+          "index": 3,
+          "accuracy": 0.82
+        },
+        {
+          "index": 4,
+          "accuracy": 0.85
+        },
+        {
+          "index": 5,
+          "accuracy": 0.87
+        },
+        {
+          "index": 6,
+          "accuracy": 0.88
+        },
+        {
+          "index": 7,
+          "accuracy": 0.89
+        },
+        {
+          "index": 8,
+          "accuracy": 0.9
+        },
+        {
+          "index": 9,
+          "accuracy": 0.9
+        },
+        {
+          "index": 10,
+          "accuracy": 0.91
+        },
+        {
+          "index": 11,
+          "accuracy": 0.91
+        }
+      ]
+    },
+    {
+      "name": "语义理解",
+      "explanation": "理解词义、句义等语言内容",
+      "layers": [
+        {
+          "index": 0,
+          "accuracy": 0.45
+        },
+        {
+          "index": 1,
+          "accuracy": 0.52
+        },
+        {
+          "index": 2,
+          "accuracy": 0.58
+        },
+        {
+          "index": 3,
+          "accuracy": 0.64
+        },
+        {
+          "index": 4,
+          "accuracy": 0.7
+        },
+        {
+          "index": 5,
+          "accuracy": 0.75
+        },
+        {
+          "index": 6,
+          "accuracy": 0.8
+        },
+        {
+          "index": 7,
+          "accuracy": 0.84
+        },
+        {
+          "index": 8,
+          "accuracy": 0.87
+        },
+        {
+          "index": 9,
+          "accuracy": 0.89
+        },
+        {
+          "index": 10,
+          "accuracy": 0.91
+        },
+        {
+          "index": 11,
+          "accuracy": 0.92
+        }
+      ]
+    },
+    {
+      "name": "逻辑推理",
+      "explanation": "进行因果推断、类比推理等高级认知",
+      "layers": [
+        {
+          "index": 0,
+          "accuracy": 0.35
+        },
+        {
+          "index": 1,
+          "accuracy": 0.4
+        },
+        {
+          "index": 2,
+          "accuracy": 0.45
+        },
+        {
+          "index": 3,
+          "accuracy": 0.5
+        },
+        {
+          "index": 4,
+          "accuracy": 0.56
+        },
+        {
+          "index": 5,
+          "accuracy": 0.62
+        },
+        {
+          "index": 6,
+          "accuracy": 0.68
+        },
+        {
+          "index": 7,
+          "accuracy": 0.74
+        },
+        {
+          "index": 8,
+          "accuracy": 0.8
+        },
+        {
+          "index": 9,
+          "accuracy": 0.85
+        },
+        {
+          "index": 10,
+          "accuracy": 0.88
+        },
+        {
+          "index": 11,
+          "accuracy": 0.9
+        }
+      ]
+    }
+  ],
+  "knowledge_evolution": {
+    "layers": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "syntax": [
+      0.65,
+      0.72,
+      0.78,
+      0.82,
+      0.85,
+      0.87,
+      0.88,
+      0.89,
+      0.9,
+      0.9,
+      0.91,
+      0.91
+    ],
+    "semantic": [
+      0.45,
+      0.52,
+      0.58,
+      0.64,
+      0.7,
+      0.75,
+      0.8,
+      0.84,
+      0.87,
+      0.89,
+      0.91,
+      0.92
+    ],
+    "reasoning": [
+      0.35,
+      0.4,
+      0.45,
+      0.5,
+      0.56,
+      0.62,
+      0.68,
+      0.74,
+      0.8,
+      0.85,
+      0.88,
+      0.9
+    ]
+  },
+  "faqs": [
+    {
+      "question": "如何理解\"层\"的概念？",
+      "answer": "可以把层想象成处理信息的\"步骤\"。信息从第1层输入，经过12层的逐步处理，每一层都会提取和组合更高级的特征。"
+    },
+    {
+      "question": "为什么有些层准确率高，有些低？",
+      "answer": "不同层专门处理不同类型的信息。早期层处理简单特征（如词性），后期层处理复杂概念。如果在某项任务上所有层都不高，说明模型可能没有学会这个任务。"
+    },
+    {
+      "question": "注意力机制是什么？",
+      "answer": "注意力机制让模型能够\"关注\"输入中的重要部分。就像阅读时，我们会重点关注某些关键词一样，模型通过注意力权重来决定哪些信息更重要。"
+    },
+    {
+      "question": "这些分析结果如何帮助改进模型？",
+      "answer": "通过分析可以：1) 发现模型的弱点（哪层学得不好）；2) 理解模型如何做决策；3) 指导模型压缩和优化；4) 提高模型的可解释性和可信度。"
+    }
+  ]
+};
+
+        // 通用工具函数
+        function formatNumber(num) {
+            return num.toLocaleString('zh-CN');
+        }
+
+        function formatPercent(num) {
+            return (num * 100).toFixed(1) + '%';
+        }
+
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('报告加载完成');
+            
+// 绘制知识演化图
+var trace1 = {
+    x: [1,2,3,4,5,6,7,8,9,10,11,12,],
+    y: [0.65,0.72,0.78,0.82,0.85,0.87,0.88,0.89,0.9,0.9,0.91,0.91,],
+    mode: 'lines+markers',
+    name: '语法知识',
+    line: {color: '#667eea'}
+};
+
+var trace2 = {
+    x: [1,2,3,4,5,6,7,8,9,10,11,12,],
+    y: [0.45,0.52,0.58,0.64,0.7,0.75,0.8,0.84,0.87,0.89,0.91,0.92,],
+    mode: 'lines+markers',
+    name: '语义知识',
+    line: {color: '#764ba2'}
+};
+
+var trace3 = {
+    x: [1,2,3,4,5,6,7,8,9,10,11,12,],
+    y: [0.35,0.4,0.45,0.5,0.56,0.62,0.68,0.74,0.8,0.85,0.88,0.9,],
+    mode: 'lines+markers',
+    name: '推理能力',
+    line: {color: '#f093fb'}
+};
+
+var layout = {
+    title: '知识在各层的演化',
+    xaxis: {title: '层数'},
+    yaxis: {title: '准确率', range: [0, 1]},
+    hovermode: 'closest',
+    plot_bgcolor: 'rgba(0,0,0,0)',
+    paper_bgcolor: 'rgba(0,0,0,0)'
+};
+
+Plotly.newPlot('knowledge-evolution-chart', [trace1, trace2, trace3], layout, {responsive: true});
+
+        });
+    </script>
+</body>
+</html>

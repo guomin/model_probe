@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- 关键发现部分 -->
+<div class="card">
+    <h2>⭐ 关键发现</h2>
+    <p style="margin-bottom: 20px; color: #666;">这是最重要的3个发现，建议优先了解：</p>
+
+    <div class="key-findings">
+        {% for finding in findings %}
+        <div class="finding-card">
+            <div class="icon">{{ finding.icon }}</div>
+            <h4>{{ finding.title }}</h4>
+            <p>{{ finding.description }}</p>
+            {% if finding.detail %}
+            <div class="explanation" style="margin-top: 10px;">
+                <strong>💡 这意味着：</strong>{{ finding.detail }}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- 快速统计 -->
+<div class="card">
+    <h2>📊 模型概览</h2>
+
+    <div class="stat-grid">
+        <div class="stat-box">
+            <div class="value">{{ model.num_layers }}</div>
+            <div class="label">层数</div>
+        </div>
+        <div class="stat-box">
+            <div class="value">{{ model.num_params }}</div>
+            <div class="label">参数量</div>
+        </div>
+        <div class="stat-box">
+            <div class="value">{{ model.hidden_dim }}</div>
+            <div class="label">隐藏维度</div>
+        </div>
+        <div class="stat-box">
+            <div class="value">{{ model.num_heads }}</div>
+            <div class="label">注意力头数</div>
+        </div>
+    </div>
+</div>
+
+<!-- 层准确率概览 -->
+<div class="card">
+    <h2>🎯 各层能力分析</h2>
+    <p style="margin-bottom: 20px; color: #666;">每层对不同任务的准确率，颜色越深表示能力越强：</p>
+
+    {% for task in layer_tasks %}
+    <div style="margin-bottom: 25px;">
+        <h3 style="margin-bottom: 10px;">{{ task.name }}</h3>
+        <div class="explanation" style="margin-bottom: 15px;">
+            <strong>什么是{{ task.name }}？</strong>{{ task.explanation }}
+        </div>
+
+        {% for layer in task.layers %}
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>第{{ layer.index }}层</span>
+                <span>{{ formatPercent(layer.accuracy) }}</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: {{ layer.accuracy * 100 }}%;">
+                    {{ formatPercent(layer.accuracy) }}
+                </div>
+            </div>
+            {% if layer.accuracy > 0.9 %}
+            <div style="font-size: 0.85em; color: #28a745; margin-top: 5px;">
+                ✓ 该层在此任务上表现优异
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+</div>
+
+<!-- 知识演化 -->
+<div class="card">
+    <h2>📈 知识如何逐层累积</h2>
+    <p style="margin-bottom: 20px; color: #666;">观察不同类型的知识在各层中是如何形成和累积的：</p>
+
+    <div id="knowledge-evolution-chart"></div>
+
+    <div class="explanation">
+        <strong>💡 观察要点：</strong>
+        <ul style="margin-left: 20px; margin-top: 10px;">
+            <li>早期层（1-4）：主要处理低级特征（词性、句法）</li>
+            <li>中期层（5-8）：开始组合抽象概念</li>
+            <li>后期层（9-12）：处理高级语义和推理</li>
+        </ul>
+    </div>
+</div>
+
+<!-- 导航到详细页面 -->
+<div class="card">
+    <h2>🔍 深入探索</h2>
+    <p style="margin-bottom: 20px; color: #666;">点击下方卡片查看更详细的分析：</p>
+
+    <div class="nav-cards">
+        <div class="nav-card" onclick="window.location.href='layers.html'">
+            <div class="icon">🧠</div>
+            <h3>层分析</h3>
+            <p>深入了解每一层的行为</p>
+        </div>
+
+        <div class="nav-card" onclick="window.location.href='attention.html'">
+            <div class="icon">👁️</div>
+            <h3>注意力机制</h3>
+            <p>查看模型在关注什么</p>
+        </div>
+
+        <div class="nav-card" onclick="window.location.href='knowledge.html'">
+            <div class="icon">📍</div>
+            <h3>知识定位</h3>
+            <p>找出知识存储位置</p>
+        </div>
+
+        <div class="nav-card" onclick="window.location.href='exploration.html'">
+            <div class="icon">🧪</div>
+            <h3>交互探索</h3>
+            <p>动态调整参数观察</p>
+        </div>
+    </div>
+</div>
+
+<!-- 常见问题 -->
+<div class="card">
+    <h2>❓ 常见问题</h2>
+
+    <div style="margin-top: 20px;">
+        {% for faq in faqs %}
+        <details style="margin-bottom: 15px; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px;">
+            <summary style="cursor: pointer; font-weight: bold; color: #667eea;">
+                {{ faq.question }}
+            </summary>
+            <div style="margin-top: 10px; color: #555;">
+                {{ faq.answer }}
+            </div>
+        </details>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block onload %}
+// 绘制知识演化图
+var trace1 = {
+    x: [{% for layer in knowledge_evolution.layers %}{{ layer }},{% endfor %}],
+    y: [{% for val in knowledge_evolution.syntax %}{{ val }},{% endfor %}],
+    mode: 'lines+markers',
+    name: '语法知识',
+    line: {color: '#667eea'}
+};
+
+var trace2 = {
+    x: [{% for layer in knowledge_evolution.layers %}{{ layer }},{% endfor %}],
+    y: [{% for val in knowledge_evolution.semantic %}{{ val }},{% endfor %}],
+    mode: 'lines+markers',
+    name: '语义知识',
+    line: {color: '#764ba2'}
+};
+
+var trace3 = {
+    x: [{% for layer in knowledge_evolution.layers %}{{ layer }},{% endfor %}],
+    y: [{% for val in knowledge_evolution.reasoning %}{{ val }},{% endfor %}],
+    mode: 'lines+markers',
+    name: '推理能力',
+    line: {color: '#f093fb'}
+};
+
+var layout = {
+    title: '知识在各层的演化',
+    xaxis: {title: '层数'},
+    yaxis: {title: '准确率', range: [0, 1]},
+    hovermode: 'closest',
+    plot_bgcolor: 'rgba(0,0,0,0)',
+    paper_bgcolor: 'rgba(0,0,0,0)'
+};
+
+Plotly.newPlot('knowledge-evolution-chart', [trace1, trace2, trace3], layout, {responsive: true});
+{% endblock %}

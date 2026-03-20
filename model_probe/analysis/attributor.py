@@ -286,3 +286,69 @@ class Attributor:
             layer_importance[f"layer_{i}"] = importance
             
         return layer_importance
+    
+    def compute_layer_activation_similarity(
+        self,
+        input_ids: torch.Tensor,
+        attention_mask: Optional[torch.Tensor] = None,
+        metric: str = "cka"
+    ) -> Dict[Tuple[str, str], float]:
+        """
+        动态分析：计算各层激活值之间的相似性
+        
+        Args:
+            input_ids: 输入token ids
+            attention_mask: 注意力掩码
+            metric: "cosine" 或 "cka"
+            
+        Returns:
+            {(layer_i, layer_j): similarity}
+        """
+        hidden_states = self.model_wrapper.get_hidden_states(
+            input_ids, attention_mask
+        )["all_hidden_states"]
+        
+        n_layers = len(hidden_states)
+        activations = []
+        layer_names = []
+        
+        for i, hidden in enumerate(hidden_states):
+            hidden_mean = hidden.mean(dim=1)
+            activations.append(hidden_mean.flatten(1).T)
+            layer_names.append(f"layer_{i}")
+        
+        similarity = {}
+        
+        if metric == "cosine":
+            for i in range(n_layers):
+                for j in range(i + 1, n_layers):
+                    sim = F.cosine_similarity(activations[i], activations[j]).mean().item()
+                    similarity[(layer_names[i], layer_names[j])] = sim
+        else:
+            def centering(K):
+                n = K.shape[0]
+                I = torch.eye(n, device=K.device)
+                H = I - torch.ones(n, n, device=K.device) / n
+                return H @ K @ H
+            
+            def rbf_kernel(X, sigma=1.0):
+                X_norm = (X ** 2).sum(dim=1).reshape(-1, 1)
+                dist = X_norm + X_norm.T - 2 * X @ X.T
+                return torch.exp(-dist / (2 * sigma ** 2))
+            
+            def cka(K1, K2):
+                K1 = centering(K1)
+                K2 = centering(K2)
+                hsic = (K1 * K2).sum()
+                var1 = (K1 ** 2).sum()
+                var2 = (K2 ** 2).sum()
+                return hsic / (torch.sqrt(var1 * var2) + 1e-10)
+            
+            for i in range(n_layers):
+                for j in range(i + 1, n_layers):
+                    K1 = rbf_kernel(activations[i])
+                    K2 = rbf_kernel(activations[j])
+                    sim = cka(K1, K2).item()
+                    similarity[(layer_names[i], layer_names[j])] = sim
+        
+        return similarity

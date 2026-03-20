@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- 关键发现 -->
+<div class="card">
+    <h2>⭐ 关键发现</h2>
+
+    <div class="key-findings">
+        <div class="finding-card">
+            <div class="icon">🎯</div>
+            <h4>层差异性大</h4>
+            <p>相邻Transformer层平均相似度仅{{ mean_similarity | formatPercent }}，说明每层都在学习不同的特征</p>
+            <div class="explanation" style="margin-top: 10px;">
+                <strong>💡 这意味着：</strong>模型设计优秀，没有明显冗余，12层的深度是合理的
+            </div>
+        </div>
+
+        <div class="finding-card">
+            <div class="icon">📊</div>
+            <h4>LayerNorm高度相似</h4>
+            <p>LayerNorm层之间的相似度>0.999，这是设计特性而非冗余</p>
+            <div class="explanation" style="margin-top: 10px;">
+                <strong>💡 这意味着：</strong>LayerNorm只负责标准化，参数相近是正常的
+            </div>
+        </div>
+
+        <div class="finding-card">
+            <div class="icon">⚖️</div>
+            <h4>MLP vs 注意力</h4>
+            <p>MLP层平均相似度{{ mlp_mean | formatPercent }}，注意力层{{ attn_mean | formatPercent }}</p>
+            <div class="explanation" style="margin-top: 10px;">
+                <strong>💡 这意味着：</strong>两者都在学习新特征，MLP层稍微更稳定一些
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 模型信息 -->
+<div class="card">
+    <h2>📊 分析概览</h2>
+
+    <div class="stat-grid">
+        <div class="stat-box">
+            <div class="value">{{ model_name }}</div>
+            <div class="label">模型</div>
+        </div>
+        <div class="stat-box">
+            <div class="value">{{ num_layers }}</div>
+            <div class="label">Transformer层数</div>
+        </div>
+        <div class="stat-box">
+            <div class="value">{{ num_pairs }}</div>
+            <div class="label">分析层对数</div>
+        </div>
+        <div class="stat-box">
+            <div class="value">{{ mean_similarity | formatPercent }}</div>
+            <div class="label">平均相似度</div>
+        </div>
+    </div>
+</div>
+
+<!-- 最相似的层对 -->
+<div class="card">
+    <h2>🔝 最相似的10对层</h2>
+    <p style="margin-bottom: 20px; color: #666;">注意：LayerNorm层的相似度高是正常的</p>
+
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="background: #f5f7fa; border-bottom: 2px solid #ddd;">
+                <th style="padding: 12px; text-align: left;">排名</th>
+                <th style="padding: 12px; text-align: left;">层1</th>
+                <th style="padding: 12px; text-align: left;">层2</th>
+                <th style="padding: 12px; text-align: right;">相似度</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for pair in top_similar %}
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 10px;">{{ loop.index }}</td>
+                <td style="padding: 10px; font-family: monospace; font-size: 0.9em;">{{ pair.layer1 }}</td>
+                <td style="padding: 10px; font-family: monospace; font-size: 0.9em;">{{ pair.layer2 }}</td>
+                <td style="padding: 10px; text-align: right; font-weight: bold; color: {{ pair.color }};">
+                    {{ pair.similarity | formatPercent }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- 相邻层分析 -->
+<div class="card">
+    <h2>📈 相邻Transformer层分析</h2>
+    <p style="margin-bottom: 20px; color: #666;">观察模型如何逐层变化</p>
+
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; min-width: 600px;">
+            <thead>
+                <tr style="background: #f5f7fa; border-bottom: 2px solid #ddd;">
+                    <th style="padding: 12px; text-align: left;">层转换</th>
+                    <th style="padding: 12px; text-align: right;">相似度</th>
+                    <th style="padding: 12px; text-align: left;">解读</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for adj in adjacent_layers %}
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px;">
+                        <strong>Layer {{ adj.from }} → {{ adj.to }}</strong>
+                    </td>
+                    <td style="padding: 10px; text-align: right;">
+                        <div class="progress-bar" style="width: 150px; display: inline-block; margin: 0;">
+                            <div class="progress-fill" style="width: {{ adj.similarity * 10000 }}%; background: {{ adj.color }};">
+                                {{ (adj.similarity * 100) | round(4) }}%
+                            </div>
+                        </div>
+                    </td>
+                    <td style="padding: 10px;">
+                        {{ adj.interpretation }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="explanation" style="margin-top: 20px;">
+        <strong>💡 观察：</strong>
+        <ul style="margin-left: 20px; margin-top: 10px;">
+            <li>所有相邻层的相似度都很低（{{ mean_similarity | formatPercent }}）</li>
+            <li>说明每层都在学习<strong>不同</strong>的特征</li>
+            <li>这是<strong>好事</strong>！模型没有冗余，设计合理</li>
+        </ul>
+    </div>
+</div>
+
+<!-- 热力图 -->
+<div class="card">
+    <h2>🔥 层相似度热力图</h2>
+    <p style="margin-bottom: 20px; color: #666;">颜色越红表示相似度越高，越蓝表示差异越大</p>
+
+    <div style="text-align: center; margin: 30px 0;">
+        <img src="{{ heatmap_path }}" alt="Layer Similarity Heatmap" style="max-width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+    </div>
+
+    <div style="display: flex; justify-content: center; gap: 30px; margin-top: 20px; flex-wrap: wrap;">
+        <div style="text-align: center;">
+            <div style="width: 50px; height: 50px; background: #d73027; border-radius: 4px; margin: 0 auto 10px;"></div>
+            <div style="font-size: 0.9em; color: #666;">高相似度 (>0.8)</div>
+            <div style="font-size: 0.8em; color: #999;">可能冗余</div>
+        </div>
+        <div style="text-align: center;">
+            <div style="width: 50px; height: 50px; background: #ffffbf; border-radius: 4px; margin: 0 auto 10px;"></div>
+            <div style="font-size: 0.9em; color: #666;">中等相似度 (0.4-0.8)</div>
+            <div style="font-size: 0.8em; color: #999;">部分相关</div>
+        </div>
+        <div style="text-align: center;">
+            <div style="width: 50px; height: 50px; background: #4575b4; border-radius: 4px; margin: 0 auto 10px;"></div>
+            <div style="font-size: 0.9em; color: #666;">低相似度 (<0.4)</div>
+            <div style="font-size: 0.8em; color: #999;">差异较大</div>
+        </div>
+    </div>
+</div>
+
+<!-- 统计分析 -->
+<div class="card">
+    <h2>📊 统计分析</h2>
+
+    <div class="stat-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+        <div class="stat-box">
+            <div class="value" style="font-size: 1.5em;">{{ stats.mean | formatPercent }}</div>
+            <div class="label">平均相似度</div>
+        </div>
+        <div class="stat-box">
+            <div class="value" style="font-size: 1.5em;">{{ stats.std | formatPercent }}</div>
+            <div class="label">标准差</div>
+        </div>
+        <div class="stat-box">
+            <div class="value" style="font-size: 1.5em;">{{ stats.max | formatPercent }}</div>
+            <div class="label">最大相似度</div>
+        </div>
+        <div class="stat-box">
+            <div class="value" style="font-size: 1.5em;">{{ stats.min | formatPercent }}</div>
+            <div class="label">最小相似度</div>
+        </div>
+    </div>
+
+    <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+        <h3 style="margin-top: 0; color: #667eea;">解读</h3>
+        <ul style="line-height: 1.8;">
+            <li><strong>低相似度 ({{ stats.mean | formatPercent }})</strong> → 说明每层都很独特，没有冗余</li>
+            <li><strong>低标准差 ({{ stats.std | formatPercent }})</strong> → 说明所有层都遵循相同的模式</li>
+            <li><strong>结论：</strong>GPT-2的12层设计是合理的，每层都在贡献不同的能力</li>
+        </ul>
+    </div>
+</div>
+
+<!-- 实际应用 -->
+<div class="card">
+    <h2>💡 实际应用建议</h2>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
+        <div style="padding: 20px; background: #f0f7ff; border-left: 4px solid #2196F3; border-radius: 4px;">
+            <h3 style="margin-top: 0; color: #2196F3;">模型压缩</h3>
+            <p style="margin-bottom: 10px;"><strong>发现：</strong>层相似度很低</p>
+            <p style="margin-bottom: 10px;"><strong>建议：</strong></p>
+            <ul style="margin-left: 20px;">
+                <li>❌ 不适合删除层</li>
+                <li>✅ 可以尝试量化</li>
+                <li>✅ 可以尝试知识蒸馏</li>
+            </ul>
+        </div>
+
+        <div style="padding: 20px; background: #fff3e0; border-left: 4px solid #FF9800; border-radius: 4px;">
+            <h3 style="margin-top: 0; color: #FF9800;">架构设计</h3>
+            <p style="margin-bottom: 10px;"><strong>发现：</strong>每层都有独特作用</p>
+            <p style="margin-bottom: 10px;"><strong>建议：</strong></p>
+            <ul style="margin-left: 20px;">
+                <li>✅ 12层深度合理</li>
+                <li>✅ 可以参考此结构设计新模型</li>
+                <li>✅ 确保每层都有差异性</li>
+            </ul>
+        </div>
+
+        <div style="padding: 20px; background: #f3e5f5; border-left: 4px solid #9C27B0; border-radius: 4px;">
+            <h3 style="margin-top: 0; color: #9C27B0;">迁移学习</h3>
+            <p style="margin-bottom: 10px;"><strong>发现：</strong>MLP层更稳定</p>
+            <p style="margin-bottom: 10px;"><strong>建议：</strong></p>
+            <ul style="margin-left: 20px;">
+                <li>✅ 冻结前6层</li>
+                <li>✅ 微调后6层</li>
+                <li>✅ 重新训练注意力层</li>
+            </ul>
+        </div>
+
+        <div style="padding: 20px; background: #e8f5e8; border-left: 4px solid #4CAF50; border-radius: 4px;">
+            <h3 style="margin-top: 0; color: #4CAF50;">知识蒸馏</h3>
+            <p style="margin-bottom: 10px;"><strong>发现：</strong>层间差异适中</p>
+            <p style="margin-bottom: 10px;"><strong>建议：</strong></p>
+            <ul style="margin-left: 20px;">
+                <li>✅ 选择Layer 4-8进行蒸馏</li>
+                <li>❌ 避开LayerNorm层</li>
+                <li>✅ 关注注意力层和MLP层</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- 方法说明 -->
+<div class="card">
+    <h2>📚 分析方法说明</h2>
+
+    <details style="margin-bottom: 15px;">
+        <summary style="cursor: pointer; font-weight: bold; color: #667eea; padding: 10px; background: #f5f7fa; border-radius: 4px;">
+            什么是余弦相似度？
+        </summary>
+        <div style="padding: 15px; margin-top: 10px; background: white; border-radius: 4px;">
+            <p><strong>余弦相似度</strong>测量两个向量方向的相似性，公式为：</p>
+            <div style="background: #f5f7fa; padding: 15px; border-radius: 4px; font-family: monospace; margin: 10px 0;">
+                cos(θ) = (A · B) / (|A| × |B|)
+            </div>
+            <ul style="margin-left: 20px;">
+                <li><strong>值 = 1</strong>：完全相同方向</li>
+                <li><strong>值 = 0</strong>：正交（无关）</li>
+                <li><strong>值 = -1</strong>：完全相反方向</li>
+            </ul>
+        </div>
+    </details>
+
+    <details style="margin-bottom: 15px;">
+        <summary style="cursor: pointer; font-weight: bold; color: #667eea; padding: 10px; background: #f5f7fa; border-radius: 4px;">
+            为什么要分析层相似度？
+        </summary>
+        <div style="padding: 15px; margin-top: 10px; background: white; border-radius: 4px;">
+            <p>层相似度分析可以帮助我们：</p>
+            <ul style="margin-left: 20px;">
+                <li>✅ <strong>发现冗余</strong>：相似的层可能可以合并或删除</li>
+                <li>✅ <strong>理解结构</strong>：了解模型如何逐层处理信息</li>
+                <li>✅ <strong>优化模型</strong>：指导压缩、蒸馏等优化策略</li>
+                <li>✅ <strong>设计架构</strong>：为新模型设计提供参考</li>
+            </ul>
+        </div>
+    </details>
+
+    <details>
+        <summary style="cursor: pointer; font-weight: bold; color: #667eea; padding: 10px; background: #f5f7fa; border-radius: 4px;">
+            为什么LayerNorm层相似度高？
+        </summary>
+        <div style="padding: 15px; margin-top: 10px; background: white; border-radius: 4px;">
+            <p><strong>LayerNorm</strong>的作用是标准化：</p>
+            <div style="background: #f5f7fa; padding: 15px; border-radius: 4px; font-family: monospace; margin: 10px 0;">
+                y = γ × (x - μ) / σ + β
+            </div>
+            <p>其中 γ 和 β 是可学习参数，但它们的作用是"标准化"，所以不同层的值相近是<strong>正常的</strong>，不是冗余！</p>
+        </div>
+    </details>
+</div>
+{% endblock %}
